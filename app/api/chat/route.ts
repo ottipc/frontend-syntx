@@ -9,7 +9,7 @@ export async function POST(request: NextRequest) {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 25000); // 25s Timeout
     
-    const response = await fetch('http://49.13.3.21:8000/api/chat', {
+    const response = await fetch('https://dev.syntx-systems.com:8000/api/chat', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
