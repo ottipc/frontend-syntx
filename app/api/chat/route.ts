@@ -7,9 +7,9 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 25000); // 25s Timeout
+    const timeoutId = setTimeout(() => controller.abort(), 25000);
     
-    const response = await fetch('https://dev.syntx-system.com:8000/api/chat', {
+    const response = await fetch('https://dev.syntx-system.com/api/chat', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
