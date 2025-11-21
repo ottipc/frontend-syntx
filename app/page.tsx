@@ -9,7 +9,8 @@ import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Copy, Download, RotateCcw, Settings, Trash2, Check, Plus, MessageSquare, X,
-  Search, Tag, Pin, Mic, Moon, Sun, BarChart3, ThumbsUp, ThumbsDown, Command
+  Search, Tag, Pin, Mic, Moon, Sun, BarChart3, ThumbsUp, ThumbsDown, Command,
+  Edit2, Save, Zap, Activity, TrendingUp
 } from 'lucide-react';
 
 interface Message {
@@ -95,6 +96,27 @@ const ParticleBackground = ({ intensity = 50 }) => {
   return <canvas ref={canvasRef} className="fixed inset-0 pointer-events-none z-0" />;
 };
 
+// Resonance Indicator Component
+const ResonanceIndicator = ({ messageCount }: { messageCount: number }) => {
+  const level = Math.min(messageCount / 10, 1);
+  const color = level > 0.7 ? 'bg-green-500' : level > 0.4 ? 'bg-yellow-500' : 'bg-cyan-500';
+  
+  return (
+    <div className="flex items-center gap-2">
+      <Activity size={14} className="text-cyan-400" />
+      <div className="w-20 h-2 bg-gray-700 rounded-full overflow-hidden">
+        <motion.div
+          className={`h-full ${color}`}
+          initial={{ width: 0 }}
+          animate={{ width: `${level * 100}%` }}
+          transition={{ duration: 0.5 }}
+        />
+      </div>
+      <span className="text-xs text-gray-500">{Math.round(level * 100)}%</span>
+    </div>
+  );
+};
+
 export default function Home() {
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [currentConvId, setCurrentConvId] = useState<string>('');
@@ -110,6 +132,8 @@ export default function Home() {
   const [showSearch, setShowSearch] = useState(false);
   const [tagFilter, setTagFilter] = useState<string | null>(null);
   const [isRecording, setIsRecording] = useState(false);
+  const [editingTitle, setEditingTitle] = useState<string | null>(null);
+  const [editTitle, setEditTitle] = useState('');
   
   // Settings
   const [maxTokens, setMaxTokens] = useState(500);
@@ -119,6 +143,16 @@ export default function Home() {
   
   const chatRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  // Update document title dynamically
+  useEffect(() => {
+    const currentConv = conversations.find(c => c.id === currentConvId);
+    if (currentConv && currentConv.messages.length > 0) {
+      document.title = `${currentConv.title} - SYNTX`;
+    } else {
+      document.title = 'SYNTX - Resonance System';
+    }
+  }, [currentConvId, conversations]);
 
   // LocalStorage Persistenz
   useEffect(() => {
@@ -241,11 +275,16 @@ export default function Home() {
     
     // Auto-tagging
     const newTags = [...currentConv.tags];
-    if (prompt.toLowerCase().includes('code') || prompt.toLowerCase().includes('programming')) {
-      if (!newTags.includes('Coding')) newTags.push('Coding');
+    const lowerPrompt = prompt.toLowerCase();
+    
+    if ((lowerPrompt.includes('code') || lowerPrompt.includes('programming') || lowerPrompt.includes('bug')) && !newTags.includes('Coding')) {
+      newTags.push('Coding');
     }
-    if (prompt.toLowerCase().includes('help') || prompt.toLowerCase().includes('bug')) {
-      if (!newTags.includes('Debug')) newTags.push('Debug');
+    if ((lowerPrompt.includes('idea') || lowerPrompt.includes('brainstorm')) && !newTags.includes('Ideas')) {
+      newTags.push('Ideas');
+    }
+    if ((lowerPrompt.includes('help') || lowerPrompt.includes('problem')) && !newTags.includes('Support')) {
+      newTags.push('Support');
     }
     
     setConversations(prev => prev.map(conv => 
@@ -333,20 +372,19 @@ export default function Home() {
     }
   };
 
-  const addTag = (convId: string, tag: string) => {
-    setConversations(prev => prev.map(conv => 
-      conv.id === convId && !conv.tags.includes(tag)
-        ? { ...conv, tags: [...conv.tags, tag] }
-        : conv
-    ));
+  const startEditTitle = (conv: Conversation) => {
+    setEditingTitle(conv.id);
+    setEditTitle(conv.title);
   };
 
-  const removeTag = (convId: string, tag: string) => {
-    setConversations(prev => prev.map(conv => 
-      conv.id === convId
-        ? { ...conv, tags: conv.tags.filter(t => t !== tag) }
-        : conv
-    ));
+  const saveTitle = (id: string) => {
+    if (editTitle.trim()) {
+      setConversations(prev => prev.map(conv => 
+        conv.id === id ? { ...conv, title: editTitle.trim() } : conv
+      ));
+    }
+    setEditingTitle(null);
+    setEditTitle('');
   };
 
   const reactToMessage = (msgIndex: number, reaction: 'up' | 'down') => {
@@ -409,6 +447,13 @@ export default function Home() {
     sum + conv.messages.filter(m => m.role === 'assistant').length, 0
   ) || 0;
 
+  const positiveReactions = conversations.reduce((sum, conv) => 
+    sum + conv.messages.filter(m => m.reaction === 'up').length, 0
+  );
+  const negativeReactions = conversations.reduce((sum, conv) => 
+    sum + conv.messages.filter(m => m.reaction === 'down').length, 0
+  );
+
   const copyLastResponse = () => {
     const lastAssistant = [...messages].reverse().find(m => m.role === 'assistant');
     if (lastAssistant) {
@@ -448,6 +493,43 @@ export default function Home() {
     ));
     setPrompt(lastUser.content);
     setTimeout(handleSubmit, 100);
+  };
+
+  const exportAllData = () => {
+    const dataStr = JSON.stringify(conversations, null, 2);
+    const blob = new Blob([dataStr], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `syntx-backup-${Date.now()}.json`;
+    a.click();
+  };
+
+  const importData = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      try {
+        const imported = JSON.parse(event.target?.result as string);
+        const withDates = imported.map((conv: any) => ({
+          ...conv,
+          createdAt: new Date(conv.createdAt),
+          updatedAt: new Date(conv.updatedAt),
+          messages: conv.messages.map((msg: any) => ({
+            ...msg,
+            timestamp: new Date(msg.timestamp)
+          }))
+        }));
+        setConversations(withDates);
+        if (withDates.length > 0) setCurrentConvId(withDates[0].id);
+        alert('Import erfolgreich!');
+      } catch (error) {
+        alert('Import fehlgeschlagen. Bitte überprüfe die Datei.');
+      }
+    };
+    reader.readAsText(file);
   };
 
   const bgClass = darkMode 
@@ -512,13 +594,14 @@ export default function Home() {
             <motion.div
               initial={{ scale: 0.9 }}
               animate={{ scale: 1 }}
-              className={`${darkMode ? 'bg-[#1a2332]' : 'bg-white'} rounded-2xl p-6 max-w-2xl w-full border ${darkMode ? 'border-cyan-400/20' : 'border-gray-300'}`}
+              className={`${darkMode ? 'bg-[#1a2332]' : 'bg-white'} rounded-2xl p-6 max-w-2xl w-full border ${darkMode ? 'border-cyan-400/20' : 'border-gray-300'} max-h-[80vh] overflow-y-auto`}
               onClick={e => e.stopPropagation()}
             >
-              <h3 className={`text-xl font-bold mb-6 ${darkMode ? 'text-white' : 'text-gray-900'}`}>
-                📊 Resonance Analytics
+              <h3 className={`text-xl font-bold mb-6 flex items-center gap-2 ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+                <TrendingUp className="text-cyan-400" />
+                Resonance Analytics
               </h3>
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-2 gap-4 mb-6">
                 <div className={`p-4 rounded-lg ${darkMode ? 'bg-[#0f1419]' : 'bg-gray-100'}`}>
                   <p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>Total Messages</p>
                   <p className={`text-3xl font-bold ${darkMode ? 'text-cyan-400' : 'text-cyan-600'}`}>{totalMessages}</p>
@@ -528,13 +611,47 @@ export default function Home() {
                   <p className={`text-3xl font-bold ${darkMode ? 'text-cyan-400' : 'text-cyan-600'}`}>{conversations.length}</p>
                 </div>
                 <div className={`p-4 rounded-lg ${darkMode ? 'bg-[#0f1419]' : 'bg-gray-100'}`}>
-                  <p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>Avg Response Length</p>
+                  <p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>Avg Response</p>
                   <p className={`text-3xl font-bold ${darkMode ? 'text-cyan-400' : 'text-cyan-600'}`}>{Math.round(avgResponseLength)}</p>
                 </div>
                 <div className={`p-4 rounded-lg ${darkMode ? 'bg-[#0f1419]' : 'bg-gray-100'}`}>
-                  <p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>Tags Used</p>
+                  <p className={`text-sm ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>Tags</p>
                   <p className={`text-3xl font-bold ${darkMode ? 'text-cyan-400' : 'text-cyan-600'}`}>{allTags.length}</p>
                 </div>
+              </div>
+              
+              <div className="mb-6">
+                <h4 className={`text-sm font-bold mb-2 ${darkMode ? 'text-white' : 'text-gray-900'}`}>Reactions</h4>
+                <div className="flex gap-4">
+                  <div className="flex items-center gap-2">
+                    <ThumbsUp size={16} className="text-green-400" />
+                    <span className={darkMode ? 'text-gray-300' : 'text-gray-700'}>{positiveReactions}</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <ThumbsDown size={16} className="text-red-400" />
+                    <span className={darkMode ? 'text-gray-300' : 'text-gray-700'}>{negativeReactions}</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex gap-2">
+                <button
+                  onClick={exportAllData}
+                  className="flex-1 py-2 bg-cyan-600 hover:bg-cyan-700 text-white rounded-lg flex items-center justify-center gap-2 transition-all"
+                >
+                  <Download size={16} />
+                  Export All Data
+                </button>
+                <label className="flex-1 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded-lg flex items-center justify-center gap-2 transition-all cursor-pointer">
+                  <Upload size={16} />
+                  Import Data
+                  <input
+                    type="file"
+                    accept=".json"
+                    onChange={importData}
+                    className="hidden"
+                  />
+                </label>
               </div>
             </motion.div>
           </motion.div>
@@ -568,7 +685,6 @@ export default function Home() {
                 </button>
               </div>
               
-              {/* Search */}
               {showSearch && (
                 <div className="p-2">
                   <input
@@ -582,7 +698,6 @@ export default function Home() {
                 </div>
               )}
               
-              {/* Tags Filter */}
               {allTags.length > 0 && (
                 <div className="p-2 flex flex-wrap gap-1">
                   <button
@@ -632,11 +747,44 @@ export default function Home() {
                     <div className="flex justify-between items-start mb-2">
                       <div className="flex-1 min-w-0 flex items-center gap-2">
                         {conv.pinned && <Pin size={12} className="text-cyan-400" />}
-                        <p className={`text-sm font-medium truncate ${darkMode ? 'text-white' : 'text-gray-900'}`}>
-                          {conv.title}
-                        </p>
+                        {editingTitle === conv.id ? (
+                          <div className="flex-1 flex gap-1" onClick={e => e.stopPropagation()}>
+                            <input
+                              type="text"
+                              value={editTitle}
+                              onChange={e => setEditTitle(e.target.value)}
+                              onKeyDown={e => {
+                                if (e.key === 'Enter') saveTitle(conv.id);
+                                if (e.key === 'Escape') setEditingTitle(null);
+                              }}
+                              className={`flex-1 px-2 py-1 text-xs rounded ${
+                                darkMode ? 'bg-[#0f1419] text-white' : 'bg-white text-gray-900'
+                              } border border-cyan-400/30 focus:outline-none`}
+                              autoFocus
+                            />
+                            <button
+                              onClick={() => saveTitle(conv.id)}
+                              className="p-1 text-green-400 hover:text-green-300"
+                            >
+                              <Save size={14} />
+                            </button>
+                          </div>
+                        ) : (
+                          <p className={`text-sm font-medium truncate ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+                            {conv.title}
+                          </p>
+                        )}
                       </div>
                       <div className="flex gap-1">
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            startEditTitle(conv);
+                          }}
+                          className="opacity-0 group-hover:opacity-100 p-1 text-gray-400 hover:text-white"
+                        >
+                          <Edit2 size={14} />
+                        </button>
                         <button
                           onClick={(e) => {
                             e.stopPropagation();
@@ -750,7 +898,14 @@ export default function Home() {
               </div>
             </div>
             
-            <p className="text-cyan-400 text-sm mb-3 italic">It's the resonance that governs it</p>
+            <p className="text-cyan-400 text-sm mb-2 italic">It's the resonance that governs it</p>
+            
+            {/* Resonance Indicator */}
+            {messages.length > 0 && (
+              <div className="mb-3">
+                <ResonanceIndicator messageCount={messages.length} />
+              </div>
+            )}
             
             {/* Action Buttons */}
             <div className="flex gap-2 flex-wrap justify-center">
@@ -818,7 +973,10 @@ export default function Home() {
                 exit={{ opacity: 0, height: 0 }}
                 className={`${darkMode ? 'bg-[#1a2332]' : 'bg-white'} rounded-xl p-4 mb-4 border ${darkMode ? 'border-cyan-400/20' : 'border-gray-300'} backdrop-blur-sm`}
               >
-                <h3 className={`font-bold mb-3 ${darkMode ? 'text-white' : 'text-gray-900'}`}>Settings</h3>
+                <h3 className={`font-bold mb-3 flex items-center gap-2 ${darkMode ? 'text-white' : 'text-gray-900'}`}>
+                  <Zap className="text-cyan-400" size={18} />
+                  Settings
+                </h3>
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                   <div>
                     <label className={`text-sm block mb-1 ${darkMode ? 'text-gray-400' : 'text-gray-600'}`}>
