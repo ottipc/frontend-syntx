@@ -15,7 +15,7 @@ export default function Home() {
     setResponse('');
     
     try {
-      const res = await fetch('https://dev.syntx-system.com:8000/api/chat', {
+      const res = await fetch('https://dev.syntx-system.com/api/chat', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
