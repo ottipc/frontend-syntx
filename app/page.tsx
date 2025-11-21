@@ -9,8 +9,8 @@ import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Copy, Download, RotateCcw, Settings, Trash2, Check, Plus, MessageSquare, X,
-  Search, Tag, Pin, Mic, Moon, Sun, BarChart3, ThumbsUp, ThumbsDown, Command,
-  Edit2, Save, Zap, Activity, TrendingUp
+  Search, Pin, Mic, Moon, Sun, BarChart3, ThumbsUp, ThumbsDown, Command,
+  Edit2, Save, Zap, Activity, TrendingUp, Upload
 } from 'lucide-react';
 
 interface Message {
@@ -30,7 +30,6 @@ interface Conversation {
   pinned: boolean;
 }
 
-// Particle Background Component
 const ParticleBackground = ({ intensity = 50 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   
@@ -96,7 +95,6 @@ const ParticleBackground = ({ intensity = 50 }) => {
   return <canvas ref={canvasRef} className="fixed inset-0 pointer-events-none z-0" />;
 };
 
-// Resonance Indicator Component
 const ResonanceIndicator = ({ messageCount }: { messageCount: number }) => {
   const level = Math.min(messageCount / 10, 1);
   const color = level > 0.7 ? 'bg-green-500' : level > 0.4 ? 'bg-yellow-500' : 'bg-cyan-500';
@@ -135,7 +133,6 @@ export default function Home() {
   const [editingTitle, setEditingTitle] = useState<string | null>(null);
   const [editTitle, setEditTitle] = useState('');
   
-  // Settings
   const [maxTokens, setMaxTokens] = useState(500);
   const [temperature, setTemperature] = useState(0.7);
   const [topP, setTopP] = useState(0.9);
@@ -144,7 +141,6 @@ export default function Home() {
   const chatRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  // Update document title dynamically
   useEffect(() => {
     const currentConv = conversations.find(c => c.id === currentConvId);
     if (currentConv && currentConv.messages.length > 0) {
@@ -154,7 +150,6 @@ export default function Home() {
     }
   }, [currentConvId, conversations]);
 
-  // LocalStorage Persistenz
   useEffect(() => {
     const stored = localStorage.getItem('syntx-conversations');
     const storedDarkMode = localStorage.getItem('syntx-darkmode');
@@ -211,7 +206,6 @@ export default function Home() {
   const currentConv = conversations.find(c => c.id === currentConvId);
   const messages = currentConv?.messages || [];
 
-  // Keyboard Shortcuts
   useEffect(() => {
     const handleKeyPress = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey)) {
@@ -273,7 +267,6 @@ export default function Home() {
       ? prompt.slice(0, 30) + (prompt.length > 30 ? '...' : '')
       : currentConv.title;
     
-    // Auto-tagging
     const newTags = [...currentConv.tags];
     const lowerPrompt = prompt.toLowerCase();
     
@@ -540,7 +533,6 @@ export default function Home() {
     <main className={`min-h-screen ${bgClass} flex relative transition-colors duration-500`}>
       <ParticleBackground intensity={particleIntensity} />
       
-      {/* Shortcuts Modal */}
       <AnimatePresence>
         {showShortcuts && (
           <motion.div
@@ -581,7 +573,6 @@ export default function Home() {
         )}
       </AnimatePresence>
 
-      {/* Analytics Modal */}
       <AnimatePresence>
         {showAnalytics && (
           <motion.div
@@ -658,7 +649,6 @@ export default function Home() {
         )}
       </AnimatePresence>
 
-      {/* Sidebar */}
       <AnimatePresence>
         {showSidebar && (
           <>
@@ -842,11 +832,9 @@ export default function Home() {
         )}
       </AnimatePresence>
 
-      {/* Main Content */}
       <div className="flex-1 flex flex-col items-center px-4 py-6 relative z-10">
         <div className="w-full max-w-6xl flex flex-col h-[calc(100vh-3rem)]">
           
-          {/* Header */}
           <div className="flex flex-col items-center mb-4">
             <div className="flex items-center gap-4 mb-3 w-full justify-between">
               <div className="flex gap-2">
@@ -900,14 +888,12 @@ export default function Home() {
             
             <p className="text-cyan-400 text-sm mb-2 italic">It's the resonance that governs it</p>
             
-            {/* Resonance Indicator */}
             {messages.length > 0 && (
               <div className="mb-3">
                 <ResonanceIndicator messageCount={messages.length} />
               </div>
             )}
             
-            {/* Action Buttons */}
             <div className="flex gap-2 flex-wrap justify-center">
               <button
                 onClick={() => setShowSettings(!showSettings)}
@@ -964,7 +950,6 @@ export default function Home() {
             </div>
           </div>
 
-          {/* Settings Panel */}
           <AnimatePresence>
             {showSettings && (
               <motion.div
@@ -1039,7 +1024,6 @@ export default function Home() {
             )}
           </AnimatePresence>
 
-          {/* Chat Area */}
           <div className="flex-1 overflow-hidden">
             <div 
               ref={chatRef}
@@ -1164,7 +1148,6 @@ export default function Home() {
             </div>
           </div>
 
-          {/* Input Area */}
           <div className="flex-none mt-4">
             <div className="relative">
               <textarea
