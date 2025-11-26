@@ -971,10 +971,10 @@ export default function Home() {
       </AnimatePresence>
 
       <div className="flex-1 flex flex-col items-center px-4 py-6 relative z-10">
-        <div className="w-full max-w-6xl flex flex-col h-[calc(100vh-3rem)]">
+        <div className="w-full max-w-6xl flex flex-col h-screen">
           
-          <div className="flex flex-col items-center mb-8">
-            <div className="flex items-center gap-3 mb-8 w-full justify-between">
+          <div className="flex flex-col items-center mb-4 md:mb-8">
+            <div className="flex items-center gap-3 mb-4 md:mb-8 w-full justify-between">
               <div className="flex gap-2">
                 <motion.button
                   whileHover={{ scale: 1.05 }}
@@ -1014,7 +1014,7 @@ export default function Home() {
               </div>
             </div>
 
-            <div className="flex flex-col items-center gap-6 mb-6">
+            <div className="flex flex-col items-center gap-3 mb-3 md:gap-6 md:mb-6">
               <ParallaxLogo />
               
               <motion.div
@@ -1023,7 +1023,7 @@ export default function Home() {
                 transition={{ delay: 0.3, duration: 0.8 }}
                 className="text-center"
               >
-                <h1 className={`text-6xl font-bold mb-2 ${darkMode ? 'text-white' : 'text-gray-900'} tracking-tight`}
+                <h1 className={`text-4xl md:text-6xl font-bold mb-2 ${darkMode ? 'text-white' : 'text-gray-900'} tracking-tight`}
                     style={{
                       textShadow: darkMode ? '0 0 30px rgba(6, 182, 212, 0.3)' : 'none'
                     }}>
@@ -1173,7 +1173,7 @@ export default function Home() {
             )}
           </AnimatePresence>
 
-          <div className="flex-1 overflow-hidden">
+          <div className="flex-1 overflow-hidden min-h-0">
             <div 
               ref={chatRef}
               className="h-full overflow-y-auto custom-scrollbar px-2"
